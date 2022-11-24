@@ -3,6 +3,7 @@ const router = express.Router();
 const mysql = require('../mysql').pool;
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const login = require('../middleware/login');
 
 router.get('/', (req, res, next) =>{
     res.status(200).send({
@@ -64,7 +65,12 @@ router.post('/cadastro', (req, res, next) =>{
 
 
 
-router.get('/consulta/:emailUser/:password', (req, res, next) =>{
+
+
+
+
+
+/*router.get('/consulta/:emailUser/:password', (req, res, next) =>{
     mysql.getConnection((error, conn) =>{
         if(error){return res.status(500).send({error: error})}
 
@@ -134,7 +140,7 @@ router.get('/consultaToken/:tabela/:token', (req, res, next) =>{
             }
         )
     });
-});
+});*/
 
 
 
@@ -158,7 +164,8 @@ router.post('/login', (req, res, next)=>{
                     if(result){
                         const tokenWeb = jwt.sign({
                             id_usuario: results[0].id_usuario,
-                            email: results[0].email
+                            email: results[0].email,
+                            user: results[0].user
                         }, 
                         '${process.env.JWT_KEY}', 
                         {
@@ -174,6 +181,66 @@ router.post('/login', (req, res, next)=>{
                     return res.status(401).send({ mensagem : 'Falha na autenticação'})
                 });
         });
+    });
+});
+
+router.post('/consulta', login, (req, res, next)=>{
+    mysql.getConnection((error, conn) =>{
+        if(error){return res.status(500).send({error: error})}
+
+        conn.query(
+            'SELECT * FROM login WHERE email = ?',
+            [req.usuario.email],
+            (error, resultado, field) =>{
+                console.log(req.usuario.email);
+                conn.release();
+
+                if(error){
+                    return res.status(500).send({
+                        error: error,
+                        response: null
+                    })
+                }
+
+                if(resultado.length < 1){
+                    return res.status(404).send({
+                        mensagem: 'CLIENTE NÃO ENCONTRADO'
+                    });
+                }
+
+                return res.status(200).send({
+                    mensagem: 'ENCONTRADO CLIENTE',
+                    response: req.usuario,
+                });
+            }
+        )
+    });
+});
+
+
+router.post('/cadastroCliente', (req, res, next) =>{
+    mysql.getConnection((error, conn) =>{
+        if(error){return res.status(500).send({error: error})}
+        
+        conn.query(
+            'INSERT INTO cliente (email, user) VALUES (?,?)',
+            [req.body.email, req.body.user],
+            (error, resultado, field) =>{
+                conn.release();
+
+                if(error){
+                    return res.status(500).send({
+                        error: error,
+                        response: null
+                    })
+                }
+
+                res.status(201).send({
+                    mensagem: 'CRIADO CLIENTE',
+                    id: resultado.insertId
+                });
+            }
+        )
     });
 });
 
