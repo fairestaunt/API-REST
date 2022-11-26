@@ -64,13 +64,26 @@ router.post('/cadastro', (req, res, next) =>{
 });
 
 
+/*router.post('/consultaCampo', login, (req, res, next) =>{
+    mysql.getConnection((error, conn) =>{
+        if(error){return res.status(500).send({error: error})}
 
-
-
-
-
-
-/*router.get('/consulta/:emailUser/:password', (req, res, next) =>{
+        conn.query('SELECT * FROM login WHERE ?? = ?',
+            [req.body.campo, req.body.valor],
+            (error, results) => {
+                conn.release();
+                if(results.length > 0){
+                    res.status(409).send({ mensagem: req.body.campo + ' já cadastrado'})
+                }
+                else{
+                    res.status(200).send({ mensagem: req.body.campo + ' não cadastrado'})
+                }
+        })
+    })
+})
+    
+ 
+router.get('/consulta/:emailUser/:password', (req, res, next) =>{
     mysql.getConnection((error, conn) =>{
         if(error){return res.status(500).send({error: error})}
 
@@ -143,8 +156,6 @@ router.get('/consultaToken/:tabela/:token', (req, res, next) =>{
 });*/
 
 
-
-
 router.post('/login', (req, res, next)=>{
     mysql.getConnection((error, conn) =>{
         if(error){return res.status(500).send({error: error})}
@@ -192,7 +203,7 @@ router.post('/consulta', login, (req, res, next)=>{
             'SELECT * FROM login WHERE email = ?',
             [req.usuario.email],
             (error, resultado, field) =>{
-                console.log(req.usuario.email);
+                //console.log(req.usuario.email);
                 conn.release();
 
                 if(error){
@@ -240,6 +251,124 @@ router.post('/cadastroCliente', (req, res, next) =>{
                     id: resultado.insertId
                 });
             }
+        )
+    });
+});
+
+
+router.patch('/atualizaCliente', login, (req, res, next) =>{
+    mysql.getConnection((error, conn) =>{
+        if(error){return res.status(500).send({error: error})}
+
+        conn.query(
+            `UPDATE cliente
+                SET nome = ?,
+                    sobrenome = ?,
+                    telefone = ?,
+                    cpfcnpj = ?,
+                    idioma = ?,
+                    endereco = ?,
+                    cidade = ?,
+                    uf = ?,
+                    bairro = ?,
+                    cep = ?,
+                    complemento = ?,
+                    pais = ?,
+                    user = ?,
+                    email = ?
+                WHERE email = ? or user = ?`,
+                [
+                    req.body.nome,
+                    req.body.sobrenome,
+                    req.body.telefone,
+                    req.body.cpfcnpj,
+                    req.body.idioma,
+                    req.body.endereco,
+                    req.body.cidade,
+                    req.body.uf,
+                    req.body.bairro,
+                    req.body.cep,
+                    req.body.complemento,
+                    req.body.pais,
+                    req.body.user,
+                    req.body.email,
+                    req.body.emailDefault,
+                    req.body.userDefault    
+                ],
+                (error, result, field) =>{
+                    conn.release();
+                    if(error){return res.status(500).send({error: error})}
+                    
+                    return res.status(202).send({mensagem: 'CLIENTE ATUALIZADO COM SUCESSO'})
+                }
+        )
+    });
+});
+
+router.get('/consultaCliente', login, (req, res, next)=>{
+    mysql.getConnection((error, conn) =>{
+        if(error){return res.status(500).send({error: error})}
+
+        conn.query(
+            'SELECT * FROM cliente WHERE email = ?',
+            [req.usuario.email],
+            (error, resultado, field) =>{
+                console.log(req.usuario.email);
+                conn.release();
+
+                if(error){
+                    return res.status(500).send({
+                        error: error,
+                        response: null
+                    })
+                }
+
+                if(resultado.length < 1){
+                    return res.status(404).send({
+                        mensagem: 'CLIENTE NÃO ENCONTRADO'
+                    });
+                }
+
+                return res.status(200).send({
+                    mensagem: 'ENCONTRADO CLIENTE',
+                    response: resultado[0],
+                });
+            }
+        )
+    });
+});
+
+
+router.patch('/atualizaLogin', login, (req, res, next) =>{
+    mysql.getConnection((error, conn) =>{
+        if(error){return res.status(500).send({error: error})}
+
+        conn.query(
+            `UPDATE login
+                SET user = ?,
+                    email = ?
+                WHERE email = ? or user = ?`,
+                [
+                    req.body.user,
+                    req.body.email,
+                    req.body.emailDefault,
+                    req.body.userDefault    
+                ],
+                (error, result, field) =>{
+                    conn.release();
+                    if(error){return res.status(500).send({error: error})}
+
+                    const tokenWeb = jwt.sign({
+                        email: req.body.email,
+                        user: req.body.user
+                    }, 
+                    '${process.env.JWT_KEY}', 
+                    {
+                        expiresIn: "1h"
+                    });
+                    
+                    return res.status(202).send({mensagem: 'LOGIN ATUALIZADO COM SUCESSO', token: tokenWeb})
+                }
         )
     });
 });
