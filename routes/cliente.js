@@ -313,7 +313,6 @@ router.get('/consultaCliente', login, (req, res, next)=>{
             'SELECT * FROM cliente WHERE email = ?',
             [req.usuario.email],
             (error, resultado, field) =>{
-                console.log(req.usuario.email);
                 conn.release();
 
                 if(error){
@@ -372,5 +371,130 @@ router.patch('/atualizaLogin', login, (req, res, next) =>{
         )
     });
 });
+
+
+
+router.patch('/atualizaSenha', login, (req, res, next) =>{
+    mysql.getConnection((error, conn) =>{
+        if(error){return res.status(500).send({error: error})}
+
+        bcrypt.hash(req.body.newPassword, 10, (errBcrypt, hash) => {
+            if(errBcrypt) { return res.status(500).send({ error : errBcrypt})}
+
+            conn.query(
+                `UPDATE login
+                    SET senha = ?
+                    WHERE email = ?`,
+                    [
+                        hash,
+                        req.usuario.email  
+                    ],
+                    (error, result, field) =>{
+                        conn.release();
+                        if(error){return res.status(500).send({error: error})}
+                        
+                        return res.status(202).send({mensagem: 'SENHA ATUALIZADO COM SUCESSO'})
+                    }
+            )
+
+        })
+    });
+});
+
+
+router.post('/testePass', login, (req, res, next) =>{
+    mysql.getConnection((error, conn) =>{
+        if(error){return res.status(500).send({error: error})}
+        conn.query('SELECT * FROM login WHERE email = ?',
+            [req.usuario.email],
+            (error, results, fields) => {
+                conn.release();
+                if(error){return res.status(500).send({error: error})}
+                if(results.length < 1){
+                    return res.status(401).send({ mensagem: 'Falha na autenticação'})
+                }
+                bcrypt.compare(req.body.password, results[0].senha, (err, result) => {
+                    if(err){
+                        return res.status(401).send({ mensagem : 'Falha na autenticação'})
+                    }
+
+                    if(result){
+                        return res.status(202).send({ mensagem : 'CONFERE'})
+                    }
+                    return res.status(401).send({ mensagem : 'Falha na autenticação'})
+                });
+        });
+    })
+})
+
+
+/*router.patch('/atualizaSenha', login, (req, res, next)=>{
+    mysql.getConnection((error, conn) =>{
+        if(error){return res.status(500).send({error: error})}
+        conn.query('SELECT * FROM login WHERE email = ? or user = ?',
+            [req.body.email, req.usuario.email],
+            (error, results, fields) => {
+                conn.release();
+                if(error){return res.status(500).send({error: error})}
+                if(results.length < 1){
+                    return res.status(401).send({ mensagem: 'Falha na autenticação'})
+                }
+                bcrypt.compare(req.body.password, results[0].senha, (err, result) => {
+                    if(err){
+                        return res.status(401).send({ mensagem : 'Falha na autenticação'})
+                    }
+
+                    if(result){
+                        bcrypt.hash(req.body.newPassword, 10, (errBcrypt, hash) => {
+                            if(errBcrypt) { return res.status(500).send({ error : errBcrypt})}
+                            conn.query(
+                                'INSERT INTO login (senha, user) VALUES (?,?)',
+                                [hash, req.usuario.email, req.usuario.email],
+                                (error, results, field) =>{
+                                    conn.release();
+                    
+                                    if(error){
+                                        return res.status(500).send({
+                                            error: error,
+                                            response: null
+                                        })
+                                    }
+                    
+                                    res.status(202).send({
+                                        mensagem: 'SENHA ATUALIZADA COM SUCESSO',
+                                        
+                                        //id: resultado.insertId
+                                    });
+                                })
+                        });
+
+                       /* bcrypt.hash(req.body.newPassword, 10, (errBcrypt, hash) => {
+                            if(errBcrypt) { return res.status(500).send({ error : errBcrypt})}
+
+                            conn.query(
+                                `UPDATE login
+                                    SET senha = ?
+                                    WHERE email = ? or user = ?`,
+                                    [
+                                        hash,
+                                        req.usuario.email,
+                                        req.usuario.email  
+                                    ],
+                                    (error, result, field) =>{
+                                        conn.release();
+                                        if(error){return res.status(500).send({error: error})}
+    
+                                        return res.status(202).send({mensagem: 'SENHA ATUALIZADA COM SUCESSO'})
+                                    }
+                            )
+
+                        })
+                    }
+                    return res.status(401).send({ mensagem : 'Falha na autenticação'})
+                });
+        });
+    });
+    
+});*/
 
 module.exports = router;
